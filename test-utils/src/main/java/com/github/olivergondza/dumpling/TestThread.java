@@ -25,6 +25,10 @@ package com.github.olivergondza.dumpling;
 
 import static com.github.olivergondza.dumpling.Util.pause;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -97,7 +101,7 @@ public final class TestThread {
     }
 
     /* Client is expected to dispose the thread */
-    public static Process runJmxObservableProcess(boolean auth) throws Exception {
+    public static SutProcess runJmxObservableProcess(boolean auth) throws Exception {
         String //cp = "target/test-classes:target/classes"; // Current module
         cp = TestThread.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
 
@@ -105,6 +109,7 @@ public final class TestThread {
         args.add("java");
         args.add("-cp");
         args.add(cp);
+        args.add("-Djava.util.logging.config.file=" + Util.asFile(Util.resource(TestThread.class, "logging.properties")).getAbsolutePath());
         args.add("-Dcom.sun.management.jmxremote");
         args.add("-Dcom.sun.management.jmxremote.port=" + JMX_PORT);
         args.add("-Dcom.sun.management.jmxremote.local.only=false");
@@ -116,18 +121,91 @@ public final class TestThread {
             args.add("-Dcom.sun.management.jmxremote.access.file=" + getCredFile("jmxremote.access"));
         }
         args.add("com.github.olivergondza.dumpling.TestThread");
-        final Process process = new ProcessBuilder(args).start();
+        ProcessBuilder pb = new ProcessBuilder(args);
+        final SutProcess process = new SutProcess(pb);
 
         Util.pause(1000);
 
         try {
             int exit = process.exitValue();
-            String err = Util.currentProcessOut(process.getErrorStream());
-            throw new AssertionError(String.format(
-                    "Test process terminated prematurelly: %d%nSTDERR:%n%s", exit, err
-            ));
+            throw new AssertionError("Test process terminated prematurely: " + exit);
         } catch (IllegalThreadStateException ex) {
             return process;
+        }
+    }
+
+    public static class SutProcess extends Process {
+        private final @Nonnull Process process;
+        private final @Nonnull Thread outPumper;
+        private volatile @Nonnull File logFile;
+        private @Nonnull String log;
+
+        public SutProcess(@Nonnull final ProcessBuilder processBuilder) throws IOException {
+            this.process = processBuilder.redirectErrorStream(true).start();
+            this.logFile = File.createTempFile("dumpling", "streamFile");
+            this.logFile.deleteOnExit();
+            this.outPumper = new Thread("sut-process-output-pumper for " + processBuilder.toString()) {
+                @Override public void run() {
+                    try {
+                        Util.asFile(process.getInputStream(), logFile);
+                    } catch (IOException e) {
+                        throw new Error(e);
+                    }
+                }
+            };
+            this.outPumper.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+                @Override public void uncaughtException(Thread t, Throwable e) {
+                    System.err.println(t.getName() + " died with an exception:");
+                    e.printStackTrace(System.err);
+                }
+            });
+            this.outPumper.start();
+        }
+
+        @Override public OutputStream getOutputStream() {
+            return process.getOutputStream();
+        }
+
+        @Override public InputStream getInputStream() {
+            return process.getInputStream();
+        }
+
+        @Override public InputStream getErrorStream() {
+            return process.getErrorStream();
+        }
+
+        @Override public int waitFor() throws InterruptedException {
+            int ret = process.waitFor();
+            quit();
+            return ret;
+        }
+
+        @Override public int exitValue() {
+            int ret = process.exitValue();
+            quit();
+            return ret;
+        }
+
+        @Override public void destroy() {
+            try {
+                process.destroy();
+            } finally {
+                quit();
+            }
+        }
+
+        private void quit() {
+            if (logFile == null) return;
+            try {
+                outPumper.interrupt();
+            } finally {
+                logFile.delete();
+                logFile = null;
+            }
+        }
+
+        public String getLogFile() throws IOException {
+            return Util.fileContents(logFile);
         }
     }
 
