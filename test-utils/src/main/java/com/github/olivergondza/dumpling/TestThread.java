@@ -25,9 +25,12 @@ package com.github.olivergondza.dumpling;
 
 import static com.github.olivergondza.dumpling.Util.pause;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,10 +52,13 @@ public final class TestThread {
     public static final @Nonnull String JMX_PASSWD = "secret_passwd";
     public static final @Nonnull String JMX_CONNECTION = JMX_HOST + ":" + JMX_PORT;
     public static final @Nonnull String JMX_AUTH_CONNECTION = JMX_USER + ":" + JMX_PASSWD + "@" + JMX_CONNECTION;
+    public static final String MARKER = "DUMPLING-SUT-IS-READY";
 
     // Observable process entry point - not to be invoked directly
     public static synchronized void main(String... args) throws InterruptedException {
         runThread();
+
+        System.out.println(MARKER);
 
         // Block process forever
         TestThread.class.wait();
@@ -69,7 +75,7 @@ public final class TestThread {
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
-            };
+            }
         };
         thread.setDaemon(true);
         thread.setPriority(7);
@@ -101,7 +107,7 @@ public final class TestThread {
     }
 
     /* Client is expected to dispose the thread */
-    public static SutProcess runJmxObservableProcess(boolean auth) throws Exception {
+    public static Process runJmxObservableProcess(boolean auth) throws Exception {
         String //cp = "target/test-classes:target/classes"; // Current module
         cp = TestThread.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
 
@@ -121,92 +127,33 @@ public final class TestThread {
             args.add("-Dcom.sun.management.jmxremote.access.file=" + getCredFile("jmxremote.access"));
         }
         args.add("com.github.olivergondza.dumpling.TestThread");
-        ProcessBuilder pb = new ProcessBuilder(args);
-        final SutProcess process = new SutProcess(pb);
+        ProcessBuilder pb = new ProcessBuilder(args).redirectErrorStream(true);
+        final Process process = pb.start();
 
-        Util.pause(1000);
-
-        try {
-            int exit = process.exitValue();
-            throw new AssertionError("Test process terminated prematurely: " + exit);
-        } catch (IllegalThreadStateException ex) {
-            return process;
+        BufferedInputStream bis = new BufferedInputStream(process.getInputStream());
+        bis.mark(1024 * 1024 * 1);
+        while (!isUp(bis)) {
+            try {
+                int exit = process.exitValue();
+                throw new AssertionError("Test process terminated prematurely: " + exit);
+            } catch (IllegalThreadStateException ex) {
+                // Still running
+            }
         }
+
+        return process;
     }
 
-    public static class SutProcess extends Process {
-        private final @Nonnull Process process;
-        private final @Nonnull Thread outPumper;
-        private volatile @Nonnull File logFile;
-        private @Nonnull String log;
-
-        public SutProcess(@Nonnull final ProcessBuilder processBuilder) throws IOException {
-            this.process = processBuilder.redirectErrorStream(true).start();
-            this.logFile = File.createTempFile("dumpling", "streamFile");
-            this.logFile.deleteOnExit();
-            this.outPumper = new Thread("sut-process-output-pumper for " + processBuilder.toString()) {
-                @Override public void run() {
-                    try {
-                        Util.asFile(process.getInputStream(), logFile);
-                    } catch (IOException e) {
-                        throw new Error(e);
-                    }
-                }
-            };
-            this.outPumper.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-                @Override public void uncaughtException(Thread t, Throwable e) {
-                    System.err.println(t.getName() + " died with an exception:");
-                    e.printStackTrace(System.err);
-                }
-            });
-            this.outPumper.start();
+    private static boolean isUp(BufferedInputStream is) throws IOException {
+        is.reset();
+        byte[] buffer = new byte[1024];
+        int length;
+        while ((length = is.read(buffer)) != -1) {
+            String line = new String(buffer, 0, length);
+            if (line.contains(MARKER)) return true;
         }
 
-        @Override public OutputStream getOutputStream() {
-            return process.getOutputStream();
-        }
-
-        @Override public InputStream getInputStream() {
-            return process.getInputStream();
-        }
-
-        @Override public InputStream getErrorStream() {
-            return process.getErrorStream();
-        }
-
-        @Override public int waitFor() throws InterruptedException {
-            int ret = process.waitFor();
-            quit();
-            return ret;
-        }
-
-        @Override public int exitValue() {
-            int ret = process.exitValue();
-            quit();
-            return ret;
-        }
-
-        @Override public void destroy() {
-            try {
-                process.destroy();
-            } finally {
-                quit();
-            }
-        }
-
-        private void quit() {
-            if (logFile == null) return;
-            try {
-                outPumper.interrupt();
-            } finally {
-                logFile.delete();
-                logFile = null;
-            }
-        }
-
-        public String getLogFile() throws IOException {
-            return Util.fileContents(logFile);
-        }
+        return false;
     }
 
     private static String getCredFile(String path) throws Exception {

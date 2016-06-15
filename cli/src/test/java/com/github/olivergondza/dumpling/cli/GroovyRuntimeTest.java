@@ -124,19 +124,13 @@ public class GroovyRuntimeTest extends AbstractCliTest {
     }
 
     private void assertLoadJmx(String command, String script) throws Exception {
-        TestThread.SutProcess process = disposer.register(TestThread.runJmxObservableProcess(false));
+        disposer.register(TestThread.runJmxObservableProcess(false));
         stdin(script);
         run(command, TestThread.JMX_CONNECTION);
 
-        try {
-            assertThat(err.toString(), isEmptyString());
-            assertThat(out.toString(), containsString("\"remotely-observed-thread\""));
-            assertThat(exitValue, equalTo(0));
-        } catch (AssertionError ex) {
-            // Diagnose CI failure
-            System.err.println("JMX process output: " + process.getLogFile());
-            throw ex;
-        }
+        assertThat(err.toString(), isEmptyString());
+        assertThat(out.toString(), containsString("\"remotely-observed-thread\""));
+        assertThat(exitValue, equalTo(0));
     }
 
     @Theory
