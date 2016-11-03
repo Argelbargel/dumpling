@@ -25,7 +25,7 @@ When using Dumpling CLI, `--in` option is conventionally used to choose a *facto
 
 ```bash
 $ ./dumpling.sh deadlocks --in process:4242
-$ ./dumpling.sh blocking-tree --in jmx localhost:4242
+$ ./dumpling.sh blocking-tree --in jmx:localhost:4242
 ```
 
 Run custom groovy query:
