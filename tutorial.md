@@ -35,6 +35,10 @@ runtime.threads.grep { it.status.runnable }.where(nameContains(~/ajp-.*/))
 Predefined queries can be run against `ThreadSet` or whole runtime simply:
 
 ```groovy
+runtime.query(blockingTree().showStackTraces())
+
+// Prior to version 2.1 it is needed to import the query class and instantiate explicitly
+import com.github.olivergondza.dumpling.query.BlockingTree
 runtime.query(new BlockingTree().showStackTraces())
 ```
 
