@@ -55,6 +55,9 @@ import com.github.olivergondza.dumpling.model.dump.ThreadDumpRuntime;
 import com.github.olivergondza.dumpling.model.dump.ThreadDumpThread;
 import com.github.olivergondza.dumpling.model.dump.ThreadDumpThread.Builder;
 
+import static java.util.Arrays.asList;
+
+
 /**
  * Instantiate {@link ProcessRuntime} from threaddump produced by <tt>jstack</tt> or similar tool.
  *
@@ -71,7 +74,7 @@ public class ThreadDumpFactory {
 
     private static final Pattern THREAD_DELIMITER = Pattern.compile(NL + "(?:" + NL + "(?!\\s)|(?=\"))");
     // TODO the regex is ignoring module name and version at the time: java.lang.Thread.sleep(java.base@9-ea/Native Method)
-    private static final Pattern STACK_TRACE_ELEMENT_LINE = Pattern.compile(" *at (\\S+)\\.(\\S+)\\((?:.+/)?([^:]+?)(\\:\\d+)?\\)");
+    private static final Pattern STACK_TRACE_ELEMENT_LINE = Pattern.compile("\\s*at (\\S+)\\.(\\S+)\\((?:.+/)?([^:]+?)(\\:\\d+)?\\)");
     private static final Pattern ACQUIRED_LINE = Pattern.compile("- locked " + LOCK_SUBPATTERN);
     // Oracle/OpenJdk puts unnecessary space after 'parking to wait for'
     private static final Pattern WAITING_ON_LINE = Pattern.compile("- (?:waiting on|parking to wait for ?) " + LOCK_SUBPATTERN);
@@ -131,7 +134,7 @@ public class ThreadDumpFactory {
                 }
 
                 if (header.isEmpty()) { // Still reading header
-                    header.addAll(Arrays.asList(singleChunk.split(NL)));
+                    header.addAll(asList(singleChunk.split(NL)));
                     continue;
                 }
 
@@ -204,9 +207,9 @@ public class ThreadDumpFactory {
         ThreadLock waitingOnLock = null; // in Object.wait()
         int depth = -1;
 
-        StringTokenizer tokenizer = new StringTokenizer(trace, "\n");
-        while (tokenizer.hasMoreTokens()) {
-            String line = tokenizer.nextToken();
+        Iterator<String> lines = asList(trace.split(NL)).iterator();
+        while (lines.hasNext()) {
+            String line = lines.next();
 
             StackTraceElement elem = traceElement(line);
             if (elem != null) {
@@ -240,8 +243,8 @@ public class ThreadDumpFactory {
             }
 
             if (line.contains("Locked ownable synchronizers:")) {
-                while (tokenizer.hasMoreTokens()) {
-                    line = tokenizer.nextToken();
+                while (lines.hasNext()) {
+                    line = lines.next();
 
                     if (line.contains("- None")) break;
                     Matcher matcher = OWNABLE_SYNCHRONIZER_LINE.matcher(line);
