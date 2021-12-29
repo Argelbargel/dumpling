@@ -27,6 +27,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -42,6 +43,9 @@ import org.kohsuke.args4j.spi.Setter;
 import org.reflections.Reflections;
 
 import com.github.olivergondza.dumpling.model.ProcessRuntime;
+
+import static java.util.regex.Pattern.compile;
+
 
 /**
  * Cli entry point.
@@ -101,35 +105,35 @@ public class Main {
         public int parseArguments(Parameters params) throws CmdLineException {
 
             String scheme = namedParameter("KIND", params, 0);
-
             String locator = null;
-            int delim = scheme.indexOf(':');
-            if (delim == -1) { // No scheme provided - guess
-                try {
-                    Integer.parseInt(scheme);
-                    locator = scheme;
-                    scheme = "process";
-                } catch (NumberFormatException ex) {
-                    File file = new File(scheme);
-                    if (file.exists() && !file.isDirectory()) {
-                        locator = scheme;
-                        scheme = "threaddump";
-                    }
-                }
 
-                // Inference failed
-                if (locator == null) {
-                    if (getFactory(scheme) != null) {
-                        throw new UnknownRuntimeKind(owner, "Source format mismatch. Expected " + scheme + ":LOCATOR");
-                    }
-                    throw new UnknownRuntimeKind(owner, "Unable to infer source from: " + scheme);
-                }
+            String[] schemeAndLocator = scheme.split(":(?!\\\\)", 2);
+            if (schemeAndLocator.length > 1) {
+                scheme = schemeAndLocator[0];
+                locator = schemeAndLocator[1];
             } else {
-                locator = scheme.substring(delim + 1);
-                scheme = scheme.substring(0, delim);
+                if (schemeAndLocator[0].matches("^\\d+$")) {
+                    scheme = "process";
+                    locator = schemeAndLocator[0];
+                } else {
+                    File file = new File(schemeAndLocator[0]);
+                    if (file.exists() && !file.isDirectory()) {
+                        scheme = "threaddump";
+                        locator = schemeAndLocator[0];
+                    }
+                }
             }
 
+
+            // Inference failed
             CliRuntimeFactory<?> factory = getFactory(scheme);
+            if (locator == null) {
+                if (factory != null) {
+                    throw new UnknownRuntimeKind(owner, "Source format mismatch. Expected " + scheme + ":LOCATOR");
+                }
+                throw new UnknownRuntimeKind(owner, "Unable to infer source from: " + scheme);
+            }
+
             if (factory == null) throw new UnknownRuntimeKind(owner, "Unknown runtime source kind: " + scheme);
 
             if (locator.isEmpty()) throw new UnknownRuntimeKind(owner, "No locator provided for scheme: " + scheme);
