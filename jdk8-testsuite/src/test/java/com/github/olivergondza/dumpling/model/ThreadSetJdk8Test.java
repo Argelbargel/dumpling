@@ -23,6 +23,7 @@
  */
 package com.github.olivergondza.dumpling.model;
 
+import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -31,12 +32,12 @@ import org.junit.Test;
 import com.github.olivergondza.dumpling.factory.JvmRuntimeFactory;
 
 public class ThreadSetJdk8Test {
-
-    private ThreadSet threads = new JvmRuntimeFactory().currentRuntime().getThreads();
+    private final ThreadSet<?, ?, ?> threads = new JvmRuntimeFactory().currentRuntime().getThreads();
 
     @Test
     public void grep() {
-        ThreadSet main = threads.where(it -> "main".equals(it.getName()));
+        System.out.println(threads);
+        ThreadSet<?, ?, ?> main = threads.where(it -> asList("main", "Test worker").contains(it.getName()));
         assertThat(main.size(), equalTo(1));
     }
 }
