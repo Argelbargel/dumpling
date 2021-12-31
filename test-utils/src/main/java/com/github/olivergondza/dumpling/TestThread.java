@@ -23,6 +23,8 @@
  */
 package com.github.olivergondza.dumpling;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import javax.annotation.Nonnull;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -41,6 +43,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import static com.github.olivergondza.dumpling.Util.pause;
 import static com.github.olivergondza.dumpling.Util.processBuilder;
 import static com.github.olivergondza.dumpling.Util.processTerminatedPrematurely;
+import static org.apache.commons.lang3.SystemUtils.IS_OS_WINDOWS;
+
 
 /**
  * SUT thread to be observed from tests.
@@ -265,12 +269,14 @@ public final class TestThread {
 
     private static String getCredFile(String path) throws Exception {
         String file = Util.asFile(Util.resource(TestThread.class, path)).getAbsolutePath();
-        // Workaround http://jira.codehaus.org/browse/MRESOURCES-132
-        Process process = new ProcessBuilder("chmod", "600", file).start();
-        if (process.waitFor() != 0) {
-            throw new RuntimeException(
-                    "Failed to adjust permissions: " + Util.asString(process.getErrorStream())
-            );
+        if (!IS_OS_WINDOWS) {
+            // Workaround http://jira.codehaus.org/browse/MRESOURCES-132
+            Process process = new ProcessBuilder("chmod", "600", file).start();
+            if (process.waitFor() != 0) {
+                throw new RuntimeException(
+                        "Failed to adjust permissions: " + Util.asString(process.getErrorStream())
+                );
+            }
         }
         return file;
     }

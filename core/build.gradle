@@ -1,0 +1,19 @@
+plugins {
+    id "java-library"
+    id "maven-publish"
+}
+
+dependencies {
+    testImplementation libs.commons.lang
+    testImplementation testLibs.bundles.all
+    testImplementation project(":test-utils")
+}
+
+publishing {
+    publications {
+        "${project.name}"(MavenPublication) {
+            from components.java
+            artifactId "dumpling-core"
+        }
+    }
+}

@@ -1,0 +1,41 @@
+plugins {
+    id "java"
+    id "maven-publish"
+    id "com.github.johnrengelman.shadow" version"7.1.2"
+}
+
+dependencies {
+    implementation project(":core")
+    implementation project(":groovy-api")
+    implementation libs.reflections
+    implementation libs.args4j
+    implementation libs.groovy.jsr223
+    implementation libs.groovy.sh
+
+    testImplementation project(":test-utils")
+    testImplementation testLibs.bundles.hamcrest
+}
+
+tasks.named("assemble").configure {
+    dependsOn(shadowJar)
+}
+
+tasks.named("shadowJar").configure {
+    archiveClassifier.set("shaded")
+    manifest {
+        attributes("Main-Class": "com.github.olivergondza.dumpling.cli.Main")
+    }
+}
+
+tasks.named("test").configure {
+    dependsOn(assemble)
+}
+
+publishing {
+    publications {
+        "${project.name}"(MavenPublication) {
+            from components.java
+            artifactId "dumpling-cli"
+        }
+    }
+}

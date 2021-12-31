@@ -23,6 +23,7 @@
  */
 package com.github.olivergondza.dumpling.cli;
 
+
 import com.github.olivergondza.dumpling.DisposeRule;
 import com.github.olivergondza.dumpling.TestThread;
 import com.github.olivergondza.dumpling.Util;
@@ -35,13 +36,12 @@ import org.junit.runner.RunWith;
 import javax.annotation.Nonnull;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
+import static com.github.olivergondza.dumpling.UberJarUtil.buildUberJarProcess;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
@@ -63,16 +63,10 @@ public class GroovyRuntimeTest {
     public static List<AbstractCliTest> invokers() {
         ArrayList<AbstractCliTest> callables = new ArrayList<AbstractCliTest>();
         callables.add(new AbstractCliTest() {}); // Run command within the JVM
-        callables.add(new AbstractCliTest() { // Run in sibling JDK testing the uberjar
+        callables.add(new AbstractCliTest(true) { // Run in sibling JDK testing the uberjar
             @Override protected int run(@Nonnull String... args) {
-                ArrayList<String> procArgs = new ArrayList<String>();
-                procArgs.add("java");
-                procArgs.add("-jar");
-                procArgs.add(getUberjar());
-                procArgs.addAll(Arrays.asList(args));
-
                 try {
-                    Process process = new ProcessBuilder(procArgs).start();
+                    Process process = buildUberJarProcess(args).start();
                     PrintStream inStream = new PrintStream(process.getOutputStream());
                     Util.forwardStream(in, inStream);
                     inStream.close();
@@ -91,25 +85,6 @@ public class GroovyRuntimeTest {
             }
         });
         return callables;
-    }
-
-    private static String getUberjar() {
-        File file = new File("./target");
-
-        try {
-            if (!file.exists()) throw new AssertionError(file.getCanonicalPath()+ " does not exist");
-            List<File> files = Arrays.asList(file.listFiles(new FilenameFilter() {
-                @Override public boolean accept(File dir, String name) {
-                    return name.startsWith("dumpling-cli") && name.endsWith("-shaded.jar");
-                }
-            }));
-
-            if (files.size() != 1) throw new AssertionError("One uberjar expected: " + files);
-
-            return files.get(0).getCanonicalPath();
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        }
     }
 
     @Theory
@@ -231,7 +206,7 @@ public class GroovyRuntimeTest {
 
     @Theory
     public void groovyGrepWithArg(String command, AbstractCliTest i) {
-        final String name = Thread.currentThread().getName();
+        final String name = i.forked ? "main" : Thread.currentThread().getName();
         i.stdin("def threads = D.load.jvm.threads.grep { it.name == '" + name + "' }; assert threads.size() == 1; println threads.class%n");
         i.run(command);
 
@@ -252,8 +227,8 @@ public class GroovyRuntimeTest {
 
     @Theory
     public void groovyFindAllWithArg(String command, AbstractCliTest i) {
-        final String name = Thread.currentThread().getName();
-        i.stdin("def threads = D.load.jvm.threads.findAll { it.name == '" + name + "' }; assert threads.size() == 1; println threads.getClass()%n");
+        final String name = i.forked ? "main" : Thread.currentThread().getName();
+        i.stdin("def threads = D.load.jvm.threads; def named = threads.findAll { it.name == '" + name + "' }; assert named.size() == 1; println named.getClass()%n");
         i.run(command);
 
         assertThat(i, i.reportedNoError());

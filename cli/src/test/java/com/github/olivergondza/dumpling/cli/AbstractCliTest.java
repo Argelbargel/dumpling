@@ -40,11 +40,20 @@ import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.hamcrest.TypeSafeMatcher;
 
 public abstract class AbstractCliTest {
+    public boolean forked;
 
     protected InputStream in = new ByteArrayInputStream(new byte[0]);
     protected ByteArrayOutputStream err;
     protected ByteArrayOutputStream out;
     protected int exitValue;
+
+    public AbstractCliTest() {
+        this(false);
+    }
+
+    public AbstractCliTest(boolean forked) {
+        this.forked = forked;
+    }
 
     protected int run(@Nonnull String... args) {
         err = new ByteArrayOutputStream();
@@ -101,10 +110,8 @@ public abstract class AbstractCliTest {
     protected Matcher<AbstractCliTest> reportedNoError() {
         return new TypeSafeDiagnosingMatcher<AbstractCliTest>() {
 
-            private String stderr;
-
             @Override protected boolean matchesSafely(AbstractCliTest item, Description mismatchDescription) {
-                stderr = item.err.toString();
+                String stderr = item.err.toString();
                 if ("".equals(stderr)) return true;
 
                 mismatchDescription.appendText("Got >>>" + stderr + "<<<");

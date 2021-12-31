@@ -32,11 +32,16 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import javax.annotation.Nonnull;
+
+import static java.util.Collections.emptyList;
+
 
 public class Util {
 
@@ -188,8 +193,8 @@ public class Util {
         return error;
     }
 
-    public static ProcessBuilder processBuilder() {
-        ProcessBuilder pb = new ProcessBuilder();
+    public static ProcessBuilder processBuilder(List<String> args) {
+        ProcessBuilder pb = new ProcessBuilder(args);
         try { // Inherit error out on JAVA 7 and above
             Class<?> redirect = Class.forName("java.lang.ProcessBuilder$Redirect");
             Object inherit = redirect.getDeclaredField("INHERIT").get(null);
@@ -200,5 +205,9 @@ public class Util {
         }
 
         return pb;
+    }
+
+    public static ProcessBuilder processBuilder() {
+        return processBuilder(emptyList());
     }
 }

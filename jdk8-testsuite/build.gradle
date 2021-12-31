@@ -1,0 +1,11 @@
+plugins {
+    id "java"
+}
+
+dependencies {
+    implementation project(":core")
+
+    testImplementation project(":test-utils")
+    testImplementation testLibs.bundles.hamcrest
+}
+

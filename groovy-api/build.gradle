@@ -1,0 +1,21 @@
+plugins {
+    id "groovy"
+    id "java-library"
+    id "maven-publish"
+}
+
+dependencies {
+    implementation project(":core")
+    implementation libs.groovy.jsr223
+    testImplementation project(":test-utils")
+}
+
+
+publishing {
+    publications {
+        "${project.name}"(MavenPublication) {
+            from components.java
+            artifactId "dumpling-groovy"
+        }
+    }
+}

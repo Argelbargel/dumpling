@@ -59,7 +59,7 @@ public class ProcessRuntimeOptionHandlerTest extends AbstractCliTest {
     @Test
     public void inferSourceFile() throws Exception {
         String path = Util.asFile(Util.resource("jstack/producer-consumer.log")).getAbsolutePath();
-        run("threaddump", "--in", String.valueOf(path));
+        run("threaddump", "--in", path);
         assertThat(err.toString(), equalTo(""));
         assertThat(exitValue, equalTo(0));
 

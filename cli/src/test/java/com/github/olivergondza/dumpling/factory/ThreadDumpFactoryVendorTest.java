@@ -40,6 +40,7 @@ import java.util.ArrayList;
 
 import javax.annotation.Nonnull;
 
+import com.github.olivergondza.dumpling.UberJarUtil;
 import com.github.olivergondza.dumpling.model.ModelObject;
 import org.hamcrest.Matchers;
 import org.junit.Rule;
@@ -305,17 +306,12 @@ public class ThreadDumpFactoryVendorTest {
             pidFile.deleteOnExit();
             scriptFile = File.createTempFile("dumpling", getClass().getName() + ".script");
             scriptFile.deleteOnExit();
-            PrintWriter writer = new PrintWriter(scriptFile);
-            try {
+            try (PrintWriter writer = new PrintWriter(scriptFile)) {
                 writer.print(script);
-            } finally {
-                writer.close();
             }
 
-            ProcessBuilder pb = Util.processBuilder().command(
-                    System.getProperty("java.home") + "/bin/java",
-                    "-cp", System.getProperty("surefire.real.class.path"), // Inherit from surefire process
-                    "com.github.olivergondza.dumpling.cli.Main",
+            ProcessBuilder pb = UberJarUtil.buildUberJarProcess(
+                    true,
                     "groovy",
                     "--script", scriptFile.getAbsolutePath(),
                     pidFile.getAbsolutePath()

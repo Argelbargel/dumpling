@@ -23,26 +23,28 @@
  */
 package com.github.olivergondza.dumpling.factory;
 
-import static com.github.olivergondza.dumpling.TestThread.JMX_HOST;
-import static com.github.olivergondza.dumpling.TestThread.JMX_PASSWD;
-import static com.github.olivergondza.dumpling.TestThread.JMX_USER;
-import static com.github.olivergondza.dumpling.model.ProcessThread.nameIs;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.fail;
-
-import org.junit.Rule;
-import org.junit.Test;
 
 import com.github.olivergondza.dumpling.DisposeRule;
-import com.github.olivergondza.dumpling.Util;
 import com.github.olivergondza.dumpling.TestThread;
 import com.github.olivergondza.dumpling.model.ProcessRuntime;
 import com.github.olivergondza.dumpling.model.ProcessThread;
 import com.github.olivergondza.dumpling.model.StackTrace;
 import com.github.olivergondza.dumpling.model.ThreadStatus;
 import com.github.olivergondza.dumpling.model.jmx.JmxRuntime;
+import org.apache.commons.lang3.SystemUtils;
+import org.junit.Rule;
+import org.junit.Test;
+
+import static com.github.olivergondza.dumpling.TestThread.JMX_HOST;
+import static com.github.olivergondza.dumpling.TestThread.JMX_PASSWD;
+import static com.github.olivergondza.dumpling.TestThread.JMX_USER;
+import static com.github.olivergondza.dumpling.model.ProcessThread.nameIs;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeThat;
 
 public class JmxRuntimeFactoryTest {
 
@@ -57,6 +59,8 @@ public class JmxRuntimeFactoryTest {
 
     @Test
     public void jmxRemoteConnectWithPasswd() throws Exception {
+        assumeThat(SystemUtils.IS_OS_WINDOWS, is(false));
+
         TestThread.JMXProcess process = runRemoteSut(true);
         assertThreadState(new JmxRuntimeFactory().forRemoteProcess(JMX_HOST, process.JMX_PORT, JMX_USER, JMX_PASSWD));
         assertThreadState(new JmxRuntimeFactory().forConnectionString(process.JMX_AUTH_CONNECTION));
@@ -64,6 +68,8 @@ public class JmxRuntimeFactoryTest {
 
     @Test(timeout = 10000) // Not using Timeout rule as that would not clean the test resources
     public void jmxRemoteConnectMissingPasswd() throws Exception {
+        assumeThat(SystemUtils.IS_OS_WINDOWS, is(false));
+
         TestThread.JMXProcess process = runRemoteSut(true);
         try {
             new JmxRuntimeFactory().forRemoteProcess(JMX_HOST, process.JMX_PORT);
@@ -75,6 +81,8 @@ public class JmxRuntimeFactoryTest {
 
     @Test
     public void jmxRemoteConnectWithIncorrectPasswd() throws Exception {
+        assumeThat(SystemUtils.IS_OS_WINDOWS, is(false));
+
         TestThread.JMXProcess process = runRemoteSut(true);
         try {
             new JmxRuntimeFactory().forRemoteProcess(JMX_HOST, process.JMX_PORT, JMX_USER, "incorrect_passwd");

@@ -1,0 +1,33 @@
+include "cli"
+include "core"
+include "groovy-api"
+include "jdk8-testsuite"
+include "test-utils"
+
+enableFeaturePreview("VERSION_CATALOGS")
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        libs {
+            version("groovy", "2.4.7")
+            alias("commons-lang").to("org.apache.commons", "commons-lang3").version("3.12.0")
+            alias("groovy-jsr223").to("org.codehaus.groovy", "groovy-jsr223").versionRef("groovy")
+            alias("groovy-sh").to("org.codehaus.groovy", "groovy-groovysh").versionRef("groovy")
+            alias("jsr305").to("com.google.code.findbugs", "jsr305").version("1.3.9")
+            alias("reflections").to("org.reflections", "reflections").version("0.9.10")
+            alias("args4j").to("args4j", "args4j").version("2.33")
+
+            bundle("defaultAnnotations", ["jsr305"])
+        }
+        testLibs {
+            version("hamcrest", "1.2.1")
+            alias("junit").to("junit", "junit").version("4.13.2")
+            alias("hamcrest-core").to("org.hamcrest", "hamcrest-core").versionRef("hamcrest")
+            alias("hamcrest-library").to("org.hamcrest", "hamcrest-library").versionRef("hamcrest")
+            alias("mockito").to("org.mockito", "mockito-core").version("1.9.5")
+
+            bundle("hamcrest", ["hamcrest-core", "hamcrest-library"])
+            bundle("all", ["junit", "hamcrest-core", "hamcrest-library", "mockito"])
+        }
+    }
+}

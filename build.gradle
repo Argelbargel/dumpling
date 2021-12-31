@@ -1,0 +1,65 @@
+plugins {
+    id "base"
+}
+
+group = "com.github.argelbargel.dumpling"
+
+[ "publish", "publishToMavenLocal" ].each {
+    tasks.register(it) {
+        group "publishing"
+    }
+}
+
+
+def testTask = tasks.register("test") {
+    group "verification"
+}
+
+tasks.named("check").configure {
+    dependsOn testTask
+}
+
+subprojects { project ->
+    repositories {
+        mavenCentral()
+    }
+
+    group = rootProject.group
+    version = rootProject.version
+
+    afterEvaluate {
+        setProperty("archivesBaseName", "dumpling-${properties["archivesBaseName"]}")
+    }
+
+    pluginManager.withPlugin("java") {
+        dependencies {
+            compileOnly libs.bundles.defaultAnnotations
+            testCompileOnly libs.bundles.defaultAnnotations
+            testImplementation testLibs.junit
+        }
+
+        java {
+            sourceCompatibility JavaVersion.VERSION_1_8
+            targetCompatibility JavaVersion.VERSION_1_8
+        }
+
+        tasks.named("test").configure {
+            useJUnit()
+        }
+    }
+    afterEvaluate {
+        ["assemble", "build", "check", "clean", "publish", "publishToMavenLocal", "test"].each { name ->
+            def task = project.tasks.findByName(name)
+            if (task != null) {
+                rootProject.tasks.named(name).configure {
+                    dependsOn(task)
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
