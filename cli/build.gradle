@@ -21,7 +21,7 @@ tasks.named("assemble").configure {
 }
 
 tasks.named("shadowJar").configure {
-    archiveClassifier.set("shaded")
+    archiveClassifier.set("standalone")
     manifest {
         attributes("Main-Class": "com.github.olivergondza.dumpling.cli.Main")
     }
@@ -36,6 +36,11 @@ publishing {
         "${project.name}"(MavenPublication) {
             from components.java
             artifactId "dumpling-cli"
+        }
+
+        "${project.name}-standalone"(MavenPublication) {
+            project.shadow.component(it)
+            artifactId "dumpling-cli-standalone"
         }
     }
 }
