@@ -1,6 +1,6 @@
 # Dumpling
 
-![Build Status](https://github.com/Argelbargel/dumpling/actions/workflows/github-actions.yml/badge.svg?branch=master)
+![Build Status](https://github.com/Argelbargel/dumpling/actions/workflows/build.yml/badge.svg?branch=master)
 
 Dumpling is an object model and domain specific language to represent and query the state of
 process threads and their lock based dependencies.
