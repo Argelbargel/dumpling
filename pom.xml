@@ -1,11 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.github.olivergondza.dumpling</groupId>
+  <groupId>com.github.argelbargel.dumpling</groupId>
   <artifactId>dumpling-parent</artifactId>
   <version>2.5-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>DSL based threaddump analyzer</name>
-  <url>https://github.com/olivergondza/dumpling</url>
+  <url>https://github.com/argelbargel/dumpling</url>
   <description>Dumpling is an object model and domain specific language to represent and query the state of process threads and their lock based dependencies</description>
 
   <modules>
@@ -16,9 +16,9 @@
   </modules>
 
   <scm>
-    <connection>scm:git:git://github.com/olivergondza/dumpling.git</connection>
-    <developerConnection>scm:git:git@github.com:olivergondza/dumpling.git</developerConnection>
-    <url>https://github.com/olivergondza/dumpling</url>
+    <connection>scm:git:git://github.com/argelbargel/dumpling.git</connection>
+    <developerConnection>scm:git:git@github.com:argelbargel/dumpling.git</developerConnection>
+    <url>https://github.com/argelbargel/dumpling</url>
     <tag>HEAD</tag>
   </scm>
 
@@ -34,6 +34,10 @@
       <id>ogondza</id>
       <name>Oliver Gondža</name>
       <email>ogondza@gmail.com</email>
+    </developer>
+    <developer>
+      <id>Argelbargel</id>
+      <name>Karsten Kraus</name>
     </developer>
   </developers>
 
@@ -80,7 +84,7 @@
       </dependency>
 
       <dependency>
-        <groupId>com.github.olivergondza.dumpling</groupId>
+        <groupId>com.github.argelbargel.dumpling</groupId>
         <artifactId>dumpling-test-utils</artifactId>
         <version>${project.version}</version>
         <scope>test</scope>
