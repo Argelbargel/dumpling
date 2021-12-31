@@ -21,7 +21,7 @@ tasks.named("assemble").configure {
 }
 
 tasks.named("shadowJar").configure {
-    archiveClassifier.set("standalone")
+    archiveClassifier.set("shaded")
     manifest {
         attributes("Main-Class": "com.github.olivergondza.dumpling.cli.Main")
     }
