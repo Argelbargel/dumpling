@@ -912,6 +912,24 @@ public class ThreadDumpFactoryTest {
         assertThat(blockedLocked.getWaitingToLock(), equalTo(expected));
     }
 
+    @Test
+    public void inObjectWaitShort() throws Exception {
+        ThreadDumpRuntime runtime = runtimeFrom("in-object-wait-short.log");
+        ThreadDumpThread blockedWaitingOn = runtime.getThreads().where(nameIs("blockedReacquiringWaitingOn")).onlyThread();
+        ThreadDumpThread blockedLocked = runtime.getThreads().where(nameIs("blockedReacquiringLocked")).onlyThread();
+
+        ThreadLock expected = new ThreadLock("java.lang.Object", 33677620560L);
+
+        assertThat(blockedWaitingOn.getStatus(), equalTo(ThreadStatus.BLOCKED));
+        assertTrue(blockedWaitingOn.getAcquiredLocks().isEmpty());
+        assertThat(blockedWaitingOn.getWaitingToLock(), equalTo(expected));
+
+        assertThat(blockedLocked.getStatus(), equalTo(ThreadStatus.BLOCKED));
+        assertTrue(blockedLocked.getAcquiredLocks().isEmpty());
+        assertThat(blockedLocked.getWaitingToLock(), equalTo(expected));
+    }
+
+
     // Do not require tab indented stacktraces. The use-case here is a copy&paste between systems that does not preserve them
     @Test
     public void doNotRequireTabs() throws Exception {

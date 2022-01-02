@@ -177,7 +177,6 @@ public class ThreadDumpFactory {
     }
 
     private ThreadDumpThread.Builder thread(String singleThread) {
-
         Matcher matcher = THREAD_HEADER.matcher(singleThread);
         if (!matcher.find()) return null;
 
@@ -185,17 +184,18 @@ public class ThreadDumpFactory {
         builder.setName(matcher.group(1));
         initHeader(builder, matcher.group(2));
 
-        String status = matcher.group(3);
-        if (status != null) {
-            builder.setThreadStatus(ThreadStatus.fromString(status));
-        }
-
         final String trace = matcher.group(4);
         if (trace != null) {
             builder = initStacktrace(builder, trace, singleThread);
         }
 
-        return builder;
+        String status = matcher.group(3);
+        if (status != null) {
+            builder.setThreadStatus(ThreadStatus.fromString(status, builder.getStacktrace().getHead()));
+        }
+
+
+        return fixup(builder, singleThread);
     }
 
     private Builder initStacktrace(Builder builder, String trace, String wholeThread) {
@@ -257,13 +257,24 @@ public class ThreadDumpFactory {
             }
         }
 
+        builder.setAcquiredMonitors(monitors);
+        builder.setAcquiredSynchronizers(synchronizers);
         builder.setStacktrace(new StackTrace(traceElements));
+        builder.setWaitingToLock(waitingToLock);
+        builder.setWaitingOnLock(waitingOnLock);
+        return builder;
+    }
 
+    private Builder fixup(Builder builder, String wholeThread) {
         ThreadStatus status = builder.getThreadStatus();
         StackTraceElement innerFrame = builder.getStacktrace().getElement(0);
+        ThreadLock waitingToLock = builder.getWaitingToLock(); // Block waiting on monitor
+        ThreadLock waitingOnLock = builder.getWaitingOnLock(); // in Object.wait()
+        List<ThreadLock.Monitor> monitors = new ArrayList<ThreadLock.Monitor>(builder.getAcquiredMonitors());
+
 
         // Probably a bug in JVM/jstack but let's see what we can do
-        if (waitingOnLock == null && !status.isRunnable() && WAIT_TRACE_ELEMENT.equals(innerFrame)) {
+        if (waitingToLock == null && !status.isRunnable() && WAIT_TRACE_ELEMENT.equals(innerFrame)) {
             HashSet<ThreadLock> acquiredLocks = new HashSet<ThreadLock>(monitors.size());
             for (Monitor m: monitors) {
                 acquiredLocks.add(m.getLock());
@@ -300,7 +311,7 @@ public class ThreadDumpFactory {
 
         // https://github.com/olivergondza/dumpling/issues/46
         // The lock state is changed ahead of the thread state while there can be other threads still holding the monitor
-        if (status.isBlocked() && waitingToLock == null) {
+        if (waitingToLock == null && status.isBlocked()) {
             Monitor monitor = getMonitorJustAcquired(monitors);
             if (monitor != null) {
                 LOG.fine("FIXUP: Adjust lock state from 'locked' to 'waiting to' on BLOCKED thread");
@@ -314,18 +325,9 @@ public class ThreadDumpFactory {
             }
         }
 
-        if (waitingToLock != null && !status.isBlocked()) throw new IllegalRuntimeStateException(
-                "%s thread declares waitingTo lock: >>>%n%s%n<<<%n", status, wholeThread
-        );
-        if (waitingOnLock != null && !status.isWaiting() && !status.isParked()) throw new IllegalRuntimeStateException(
-                "%s thread declares waitingOn lock: >>>%n%s%n<<<%n", status, wholeThread
-        );
-
         builder.setAcquiredMonitors(monitors);
-        builder.setAcquiredSynchronizers(synchronizers);
         builder.setWaitingToLock(waitingToLock);
         builder.setWaitingOnLock(waitingOnLock);
-
         return builder;
     }
 
@@ -373,13 +375,7 @@ public class ThreadDumpFactory {
     }
 
     private void filterMonitors(List<ThreadLock.Monitor> monitors, ThreadLock lock) {
-        for (Iterator<Monitor> it = monitors.iterator(); it.hasNext();) {
-            Monitor m = it.next();
-
-            if (m.getLock().equals(lock)) {
-                it.remove();
-            }
-        }
+        monitors.removeIf(m -> m.getLock().equals(lock));
     }
 
     private @Nonnull ThreadLock createLock(Matcher matcher) {
@@ -395,6 +391,7 @@ public class ThreadDumpFactory {
             else if (token.startsWith("tid=")) builder.setTid(parseLong(token.substring(4)));
             else if (token.startsWith("nid=")) builder.setNid(parseNid(token.substring(4)));
             else if (token.matches("#\\d+")) builder.setId(Integer.parseInt(token.substring(1)));
+            else if (token.matches("t@(\\d+)")) builder.setId(Integer.parseInt(token.substring(2)));
         }
     }
 

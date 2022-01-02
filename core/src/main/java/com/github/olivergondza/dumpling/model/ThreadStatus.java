@@ -84,20 +84,20 @@ public enum ThreadStatus {
     /**
      * Description used in thread dump.
      */
-    private final @Nonnull String name;
+    private final @Nonnull String title;
 
     /**
      * Matching java.lang.Thread.State.
      */
     private final State state;
 
-    ThreadStatus(@Nonnull String name, State state) {
-        this.name = name;
+    ThreadStatus(@Nonnull String title, State state) {
+        this.title = title;
         this.state = state;
     }
 
-    public @Nonnull String getName() {
-        return name;
+    public @Nonnull String getTitle() {
+        return title;
     }
 
     public @CheckForNull State getState() {
@@ -169,20 +169,16 @@ public enum ThreadStatus {
         return this == TERMINATED;
     }
 
-    public static @Nonnull ThreadStatus fromString(String title) {
-        try {
-
-            @SuppressWarnings("null")
-            final @Nonnull ThreadStatus value = Enum.valueOf(ThreadStatus.class, title);
-            return value;
-        } catch (IllegalArgumentException ex) {
-
-            for (ThreadStatus value: values()) {
-                if (value.getName().equals(title)) return value;
+    public static @Nonnull ThreadStatus fromString(String title, StackTraceElement head) {
+        for (ThreadStatus value: values()) {
+            if (value.getTitle().equals(title)) {
+                return value;
+            } else if (value.name().equals(title)) {
+                return value;
             }
-
-            throw ex;
         }
+
+        return fromState(Thread.State.valueOf(title.toUpperCase()), head);
     }
 
     public static @Nonnull ThreadStatus fromState(@Nonnull Thread.State state, @CheckForNull StackTraceElement head) {
