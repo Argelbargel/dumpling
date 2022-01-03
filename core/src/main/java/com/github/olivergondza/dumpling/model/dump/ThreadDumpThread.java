@@ -23,19 +23,16 @@
  */
 package com.github.olivergondza.dumpling.model.dump;
 
-import javax.annotation.Nonnull;
 
 import com.github.olivergondza.dumpling.factory.IllegalRuntimeStateException;
 import com.github.olivergondza.dumpling.model.ProcessThread;
-import com.github.olivergondza.dumpling.model.ThreadLock;
 import com.github.olivergondza.dumpling.model.ThreadStatus;
 
-import java.util.HashSet;
+import javax.annotation.Nonnull;
 
 
 public final class ThreadDumpThread extends ProcessThread<ThreadDumpThread, ThreadDumpThreadSet, ThreadDumpRuntime> {
-
-    /*package*/ ThreadDumpThread(@Nonnull ThreadDumpRuntime runtime, @Nonnull ThreadDumpThread.Builder builder) {
+    ThreadDumpThread(@Nonnull ThreadDumpRuntime runtime, @Nonnull ThreadDumpThread.Builder builder) {
         super(runtime, builder);
     }
 
@@ -43,7 +40,7 @@ public final class ThreadDumpThread extends ProcessThread<ThreadDumpThread, Thre
     protected void checkSanity(ProcessThread.Builder<?> state) {
         super.checkSanity(state);
         ThreadStatus status = state.getThreadStatus();
-        if (state.getWaitingToLock() != null && !status.isBlocked()) {
+        if (state.getWaitingToLock() != null && !status.isBlocked() && !status.isParked()) {
             throw new IllegalRuntimeStateException(
                     "%s thread declares waitingTo lock %s: >>>%n%s%n<<<%n", status, state.getWaitingToLock(), state
             );
