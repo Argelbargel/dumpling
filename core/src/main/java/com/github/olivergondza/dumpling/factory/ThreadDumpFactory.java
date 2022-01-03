@@ -31,7 +31,6 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -56,6 +55,7 @@ import com.github.olivergondza.dumpling.model.dump.ThreadDumpThread;
 import com.github.olivergondza.dumpling.model.dump.ThreadDumpThread.Builder;
 
 import static java.util.Arrays.asList;
+import static java.util.regex.Pattern.compile;
 
 
 /**
@@ -72,6 +72,7 @@ public class ThreadDumpFactory {
     private static final String NL = "(?:\\r\\n|\\n)";
     private static final String LOCK_SUBPATTERN = "<(?:0x)?(\\w+)> \\(a ([^\\)]+)\\)";
 
+    private static final Pattern EMPTY = Pattern.compile("^\\s*$");
     private static final Pattern THREAD_DELIMITER = Pattern.compile(NL + "(?:" + NL + "(?!\\s)|(?=\"))");
     // TODO the regex is ignoring module name and version at the time: java.lang.Thread.sleep(java.base@9-ea/Native Method)
     private static final Pattern STACK_TRACE_ELEMENT_LINE = Pattern.compile("\\s*at (\\S+)\\.(\\S+)\\((?:.+/)?([^:]+?)(\\:\\d+)?\\)");
@@ -79,9 +80,9 @@ public class ThreadDumpFactory {
     // Oracle/OpenJdk puts unnecessary space after 'parking to wait for'
     private static final Pattern WAITING_ON_LINE = Pattern.compile("- (?:waiting on|parking to wait for ?) " + LOCK_SUBPATTERN);
     private static final Pattern WAITING_TO_LOCK_LINE = Pattern.compile("- waiting to lock " + LOCK_SUBPATTERN);
-    private static final Pattern OWNABLE_SYNCHRONIZER_LINE = Pattern.compile("- " + LOCK_SUBPATTERN);
-    private static final Pattern THREAD_HEADER = Pattern.compile(
-            "^\"(.*)\" ([^\\n\\r]+)(?:" + NL + "\\s+java.lang.Thread.State: ([^\\n\\r]+)(?:" + NL + "(.+))?)?",
+    private static final Pattern OWNABLE_SYNCHRONIZER_LINE = Pattern.compile("- (?:locked )?" + LOCK_SUBPATTERN);
+    private static final Pattern THREAD_HEADER = compile(
+            "^\"(.+?)\" ([^\\n\\r]+)(?:" + NL + "\\s+java.lang.Thread.State: ([^\\n\\r]+)(?:" + NL + "(.+))?)?",
             Pattern.DOTALL
     );
 
@@ -186,7 +187,7 @@ public class ThreadDumpFactory {
 
         final String trace = matcher.group(4);
         if (trace != null) {
-            builder = initStacktrace(builder, trace, singleThread);
+            builder = initStacktrace(builder, trace);
         }
 
         String status = matcher.group(3);
@@ -198,7 +199,7 @@ public class ThreadDumpFactory {
         return fixup(builder, singleThread);
     }
 
-    private Builder initStacktrace(Builder builder, String trace, String wholeThread) {
+    private Builder initStacktrace(Builder builder, String trace) {
         ArrayList<StackTraceElement> traceElements = new ArrayList<StackTraceElement>();
 
         List<ThreadLock.Monitor> monitors = new ArrayList<ThreadLock.Monitor>();
@@ -246,6 +247,7 @@ public class ThreadDumpFactory {
                 while (lines.hasNext()) {
                     line = lines.next();
 
+                    if (EMPTY.matcher(line).matches()) continue;
                     if (line.contains("- None")) break;
                     Matcher matcher = OWNABLE_SYNCHRONIZER_LINE.matcher(line);
                     if (matcher.find()) {
@@ -270,11 +272,11 @@ public class ThreadDumpFactory {
         StackTraceElement innerFrame = builder.getStacktrace().getElement(0);
         ThreadLock waitingToLock = builder.getWaitingToLock(); // Block waiting on monitor
         ThreadLock waitingOnLock = builder.getWaitingOnLock(); // in Object.wait()
-        List<ThreadLock.Monitor> monitors = new ArrayList<ThreadLock.Monitor>(builder.getAcquiredMonitors());
+        List<ThreadLock.Monitor> monitors = builder.getAcquiredMonitors();
 
 
         // Probably a bug in JVM/jstack but let's see what we can do
-        if (waitingToLock == null && !status.isRunnable() && WAIT_TRACE_ELEMENT.equals(innerFrame)) {
+        if (waitingOnLock == null && !status.isRunnable() && WAIT_TRACE_ELEMENT.equals(innerFrame)) {
             HashSet<ThreadLock> acquiredLocks = new HashSet<ThreadLock>(monitors.size());
             for (Monitor m: monitors) {
                 acquiredLocks.add(m.getLock());
@@ -288,7 +290,9 @@ public class ThreadDumpFactory {
 
         if (waitingOnLock != null) {
             // Eliminate self lock that is presented in threaddumps when in Object.wait(). It is a matter or convenience - not really a FIXUP
-            filterMonitors(monitors, waitingOnLock);
+            if (filterMonitors(monitors, waitingOnLock)) {
+                builder.setAcquiredMonitors(monitors);
+            };
 
             // 'waiting on' is reported even when blocked re-entering the monitor. Convert it from waitingOn to waitingTo
             if (builder.getThreadStatus().isBlocked()) {
@@ -374,8 +378,8 @@ public class ThreadDumpFactory {
         return element;
     }
 
-    private void filterMonitors(List<ThreadLock.Monitor> monitors, ThreadLock lock) {
-        monitors.removeIf(m -> m.getLock().equals(lock));
+    private boolean filterMonitors(List<ThreadLock.Monitor> monitors, ThreadLock lock) {
+        return monitors.removeIf(m -> m.getLock().equals(lock));
     }
 
     private @Nonnull ThreadLock createLock(Matcher matcher) {
