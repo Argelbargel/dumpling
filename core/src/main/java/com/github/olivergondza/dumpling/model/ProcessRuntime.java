@@ -58,7 +58,11 @@ public abstract class ProcessRuntime<
     private @Nonnull SetType createThreads(@Nonnull Set<? extends ProcessThread.Builder<?>> builders) {
         Set<ThreadType> threads = new LinkedHashSet<ThreadType>(builders.size());
         for (ProcessThread.Builder<?> builder: builders) {
-            threads.add(createThread(builder));
+            ThreadType thread = createThread(builder);
+            if (threads.contains(thread)) {
+                throw new IllegalRuntimeStateException("duplicate thread: " + thread);
+            }
+            threads.add(thread);
         }
 
         int buildersSize = builders.size();
