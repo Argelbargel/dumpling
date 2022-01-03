@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -321,37 +322,14 @@ public class ProcessThread<
 
         ProcessThread<?, ?, ?> other = (ProcessThread<?, ?, ?>) rhs;
 
-        if (state.tid == null ? other.state.tid != null : !state.tid.equals(other.state.tid)) {
-            return false;
-        }
-        if (state.nid == null ? other.state.nid != null : !state.nid.equals(other.state.nid)) {
-            return false;
-        }
-        if (state.id == null ? other.state.id != null : !state.id.equals(other.state.id)) {
-            return false;
-        }
-
-        return true;
+        return Objects.equals(state.tid, other.state.tid)
+                && Objects.equals(state.nid, other.state.nid)
+                && Objects.equals(state.id, other.state.id);
     }
 
     @Override
     public int hashCode() {
-        Long tid = state.tid;
-        if (tid == null) {
-            tid = 0L;
-        }
-
-        Long nid = state.nid;
-        if (nid == null) {
-            nid = 0L;
-        }
-
-        Long id = state.id;
-        if (id == null) {
-            id = 0L;
-        }
-
-        return new Long(7 + 31 * tid + 17 * nid + 11 * id).hashCode();
+        return Objects.hash(state.id, state.nid, state.id);
     }
 
     public static class Builder<
